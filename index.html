@@ -1,0 +1,859 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reject or Not</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout concept: one scrolling worksheet. A sticky "case file" strip collects each decision the student makes; five step cards unlock in order; the data step holds two stacked charts (population, then sampling distribution) that share one visual language. */
+:root{
+  --bg:#f1f4f8; --surface:#ffffff; --surface2:#e8eef5; --ink:#12202e; --ink2:#4a5a6a; --line:#d2dbe4;
+  --btn:#163a5f; --btnink:#ffffff;
+  --pop:#8499b0; --popfill:rgba(132,153,176,.26);
+  --dot:#2f6fae; --samp:#c98800; --alpha:#d8432c; --pval:#7a3fd1; --ok:#17875a; --bad:#c43a2a;
+  --focus:#1a6bff;color-scheme:light;
+  --display:'Bricolage Grotesque','Avenir Next',system-ui,sans-serif;
+  --body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1721; --surface:#15212d; --surface2:#1c2b3a; --ink:#e8eef5; --ink2:#9db0c2; --line:#2a3b4c;
+  --btn:#a5ccf7; --btnink:#0b1927;
+  --pop:#6f879f; --popfill:rgba(111,135,159,.3);
+  --dot:#6aa6e0; --samp:#ffc13d; --alpha:#ff7b62; --pval:#b690ff; --ok:#4cc38a; --bad:#ff8a72;
+  --focus:#7db3ff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1721; --surface:#15212d; --surface2:#1c2b3a; --ink:#e8eef5; --ink2:#9db0c2; --line:#2a3b4c;
+  --btn:#a5ccf7; --btnink:#0b1927;
+  --pop:#6f879f; --popfill:rgba(111,135,159,.3);
+  --dot:#6aa6e0; --samp:#ffc13d; --alpha:#ff7b62; --pval:#b690ff; --ok:#4cc38a; --bad:#ff8a72;
+  --focus:#7db3ff; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 var(--body);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+.wrap{max-width:980px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);line-height:1.15;margin:0;text-wrap:balance}
+p{margin:0}
+b,strong{font-weight:600}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+.top{padding:36px 0 18px}
+.kicker{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);font-weight:600}
+h1{font-size:clamp(34px,6vw,52px);margin:6px 0 10px;letter-spacing:-.01em}
+.lede{max-width:62ch;color:var(--ink2);font-size:17px}
+
+.casefile{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);padding:10px 0;margin-bottom:14px;
+  display:flex;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--line)}
+.chip{display:flex;gap:8px;align-items:baseline;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 13px;font-size:14px;min-width:0}
+.chip small{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);font-weight:600}
+.chip.empty{opacity:.5;border-style:dashed}
+.chip.empty b{color:var(--ink2);font-weight:500}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:16px;scroll-margin-top:70px}
+.card-h{display:flex;gap:14px;align-items:center;margin-bottom:14px}
+.badge{flex:none;width:34px;height:34px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font:700 16px var(--display)}
+.card.done .badge{background:var(--ok);color:#fff}
+.card h2{font-size:clamp(21px,3.4vw,26px)}
+.card-h .sub{color:var(--ink2);font-size:14px}
+.summary{display:none;color:var(--ink2);font-size:15px;margin-left:48px;margin-top:-6px}
+.card.collapsed .body{display:none}
+.card.collapsed .summary{display:block}
+.card.collapsed .card-h{margin-bottom:12px}
+
+.chips-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.pick{border:1px solid var(--line);background:var(--surface2);border-radius:999px;padding:7px 15px;cursor:pointer;font-size:14px;font-weight:500}
+.pick[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+.story{background:var(--surface2);border-radius:10px;padding:16px 18px;font-size:17px;max-width:70ch}
+.story b{background:none}
+.story mark{background:none;color:inherit;border-radius:3px;transition:background .2s}
+.story.hint mark{background:color-mix(in srgb,var(--samp) 38%,transparent);box-shadow:0 0 0 2px color-mix(in srgb,var(--samp) 38%,transparent)}
+.facts{display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:10px;font-size:14px;color:var(--ink2)}
+.facts b{color:var(--ink)}
+.linkbtn{background:none;border:0;padding:0;color:var(--ink2);text-decoration:underline;cursor:pointer;font-size:14px;margin-top:10px}
+
+.q{margin-top:22px}
+.q h3{font-size:19px;margin-bottom:4px}
+.q .why{color:var(--ink2);font-size:14px;margin-bottom:10px;max-width:70ch}
+.opts{display:grid;gap:8px}
+.opts.two{grid-template-columns:1fr 1fr}
+.opt{display:flex;gap:12px;align-items:center;justify-content:space-between;text-align:left;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:11px 14px;cursor:pointer;min-width:0}
+.opt:hover:not(:disabled){border-color:var(--ink2)}
+.opt .sym{flex:none;font:600 14px var(--body);background:var(--surface2);border-radius:6px;padding:2px 8px;white-space:nowrap}
+.opt small{display:block;color:var(--ink2);font-size:13px;margin-top:2px}
+.opt.good{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 13%,var(--surface))}
+.opt.bad{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--surface));opacity:.75}
+.opt:disabled:not(.good):not(.bad){opacity:.5;cursor:default}
+.fb{margin-top:10px;padding:10px 14px;border-radius:10px;font-size:15px;max-width:72ch;background:var(--surface2)}
+.fb.good{background:color-mix(in srgb,var(--ok) 14%,var(--surface))}
+.fb.bad{background:color-mix(in srgb,var(--bad) 11%,var(--surface))}
+.fb b{font-weight:600}
+
+.btn{background:var(--btn);color:var(--btnink);border:0;border-radius:10px;padding:12px 20px;font-weight:600;cursor:pointer;font-size:16px}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.ghost:hover{border-color:var(--ink2)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;align-items:center}
+
+.numline{margin-top:20px;background:var(--surface2);border-radius:10px;padding:10px 12px}
+.numline svg{display:block;width:100%;height:auto}
+.numline p{font-size:14px;color:var(--ink2);margin-top:4px}
+
+.alphas{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+.acard{background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:14px;text-align:left;cursor:pointer;min-width:0;display:flex;flex-direction:column;gap:6px}
+.acard:hover{border-color:var(--ink2)}
+.acard[aria-pressed="true"]{border-color:var(--alpha);box-shadow:0 0 0 2px var(--alpha) inset}
+.acard .nm{font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--ink2)}
+.acard .big{font:700 28px var(--display)}
+.acard svg{width:100%;height:auto;display:block}
+.acard p{font-size:14px;color:var(--ink2)}
+.stakes{background:var(--surface2);border-radius:10px;padding:12px 16px;max-width:72ch;font-size:15px}
+
+.stage{display:grid;gap:14px;margin-top:6px}
+.bridge{border:2px solid var(--dot);border-radius:12px;padding:14px 16px;background:color-mix(in srgb,var(--dot) 9%,var(--surface))}
+.bridge h3{font-size:17px;margin-bottom:8px}
+.bsteps{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+.bstep{flex:1 1 180px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px;display:flex;gap:10px;align-items:flex-start;min-width:0}
+.bstep i{flex:none;font:700 13px var(--display);font-style:normal;background:var(--dot);color:var(--surface);border-radius:50%;width:22px;height:22px;display:grid;place-items:center}
+.barr{align-self:center;color:var(--dot);font-weight:700;font-size:18px}
+.bridge p{font-size:14px;margin-top:8px;color:var(--ink2)}
+.bridge p b{color:var(--ink)}
+.panel{border:1px solid var(--line);border-radius:12px;padding:14px 14px 12px;background:var(--surface);min-width:0}
+.panel-h{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;margin-bottom:6px}
+.panel-h .tag{font:700 13px var(--display);background:var(--ink);color:var(--bg);border-radius:6px;padding:1px 8px}
+.panel-h b{font-family:var(--display);font-size:18px}
+.panel-h span.s{color:var(--ink2);font-size:14px}
+canvas{display:block;width:100%;touch-action:pan-y}
+.cap{font-size:15px;color:var(--ink2);margin-top:6px;max-width:75ch}
+.cap b{color:var(--ink)}
+.toggles{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.tg{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px 7px 10px;cursor:pointer;font-size:14px;font-weight:500}
+.tg i{width:14px;height:14px;border-radius:50%;border:2px solid var(--c);background:transparent;display:block}
+.tg[aria-pressed="true"]{border-color:var(--c);background:color-mix(in srgb,var(--c) 11%,var(--surface))}
+.tg[aria-pressed="true"] i{background:var(--c)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:10px}
+.tile{border:1px solid var(--line);border-left:5px solid var(--c);border-radius:10px;padding:10px 14px;background:var(--surface)}
+.tile .k{font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;color:var(--ink2)}
+.tile .v{font:700 28px var(--display);color:var(--c);font-variant-numeric:tabular-nums}
+.tile p{font-size:14px;color:var(--ink2)}
+
+.bars{margin:6px 0 4px;display:grid;gap:10px}
+.barrow{display:grid;grid-template-columns:110px 1fr;gap:12px;align-items:center;font-size:14px}
+.barrow .lab{font-weight:600}
+.track{background:var(--surface2);border-radius:6px;height:26px;position:relative}
+.fill{position:absolute;inset:0 auto 0 0;border-radius:6px;min-width:4px;background:var(--c)}
+.track span{position:absolute;left:calc(var(--w) + 10px);top:50%;transform:translateY(-50%);font-size:13px;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.track span.in{left:auto;right:10px;color:#fff}
+.axisnote{display:flex;justify-content:space-between;font-size:12px;color:var(--ink2);margin-top:-2px;padding-left:122px}
+
+.outcome{border-radius:12px;padding:16px 18px;border:1.5px solid var(--c);background:color-mix(in srgb,var(--c) 10%,var(--surface));margin-top:8px;max-width:72ch}
+.outcome h3{font-size:21px;color:var(--c);margin-bottom:4px}
+.rule{margin-top:14px;font-size:14px;color:var(--ink2);max-width:72ch}
+
+@media (max-width:640px){
+  .alphas{grid-template-columns:1fr}
+  .opts.two{grid-template-columns:1fr}
+  .card{padding:16px}
+  .barrow{grid-template-columns:1fr}
+  .axisnote{padding-left:0}
+  .summary{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="kicker">Statistics · Hypothesis testing</p>
+  <h1>Reject or Not</h1>
+  <p class="lede">Walk through a full hypothesis test. You make every decision. The page gathers the data and draws what it means, so you can see where your sample lands.</p>
+</header>
+
+<div class="casefile" id="casefile" aria-label="Your case file">
+  <div class="chip empty" id="cfCase"><small>Case</small><b>none yet</b></div>
+  <div class="chip empty" id="cfH0"><small>Null</small><b>?</b></div>
+  <div class="chip empty" id="cfHa"><small>Alternative</small><b>?</b></div>
+  <div class="chip empty" id="cfAl"><small>Alpha</small><b>?</b></div>
+  <div class="chip empty" id="cfDec" hidden><small>Decision</small><b>?</b></div>
+</div>
+
+<!-- STEP 1 -->
+<section class="card" id="c1">
+  <div class="card-h"><div class="badge">1</div><div><h2>Read the case, then write the hypotheses</h2><div class="sub">Pick a case. The story tells you what to test.</div></div></div>
+  <div class="summary" id="sum1"></div>
+  <div class="body">
+    <div class="chips-row" id="scChips" role="group" aria-label="Choose a case"></div>
+    <div class="story" id="story"></div>
+    <div class="facts" id="facts"></div>
+    <button class="linkbtn" id="hintBtn" type="button">Highlight the clue words</button>
+
+    <div class="q" id="q1">
+      <h3>Which statement is the null hypothesis (H<sub>0</sub>)?</h3>
+      <p class="why">The null is the "nothing special is happening" claim. It is the starting assumption we test against.</p>
+      <div class="opts" id="o1"></div>
+      <div class="fb" id="f1" hidden></div>
+    </div>
+    <div class="q" id="q2" hidden>
+      <h3>Which statement is the alternative hypothesis (H<sub>a</sub>)?</h3>
+      <p class="why">The alternative is what the person running the test suspects. Look for the clue words in the story.</p>
+      <div class="opts" id="o2"></div>
+      <div class="fb" id="f2" hidden></div>
+    </div>
+    <div class="numline" id="numline" hidden></div>
+    <div class="actions"><button class="btn" id="to2" type="button" hidden>Next: choose alpha</button></div>
+  </div>
+</section>
+
+<!-- STEP 2 -->
+<section class="card" id="c2" hidden>
+  <div class="card-h"><div class="badge">2</div><div><h2>Choose your alpha level</h2><div class="sub">Decide how rare a sample must be before you stop believing H<sub>0</sub>. Do it before you see any data.</div></div></div>
+  <div class="summary" id="sum2"></div>
+  <div class="body">
+    <div class="stakes" id="stakes"></div>
+    <div class="alphas" id="alphas"></div>
+    <p class="cap" id="alphaCap">The red zone is your "too unusual" zone. If your sample lands inside it, you will reject H<sub>0</sub>.</p>
+    <div class="actions"><button class="btn" id="to3" type="button" disabled>Lock in alpha and collect data</button></div>
+  </div>
+</section>
+
+<!-- STEP 3 -->
+<section class="card" id="c3" hidden>
+  <div class="card-h"><div class="badge">3</div><div><h2>Collect data and see where your sample lands</h2><div class="sub" id="c3sub">The page simulates the data gathering. You read the pictures.</div></div></div>
+  <div class="body">
+    <div class="stage">
+      <div class="panel" id="panelA">
+        <div class="panel-h"><span class="tag">A</span><b>The population</b><span class="s">if H<sub>0</sub> is true</span></div>
+        <canvas id="cvA" role="img" aria-label="Bell-shaped population curve with the claimed average marked"></canvas>
+        <p class="cap" id="capA"></p>
+      </div>
+      <div class="bridge" id="bridge" hidden></div>
+      <div class="panel" id="panelB" hidden>
+        <div class="panel-h"><span class="tag">B</span><b>The sampling distribution</b><span class="s">the averages of 1,000 samples, all drawn from the population in A</span></div>
+        <canvas id="cvB" role="img" aria-label="Dot plot of 1,000 simulated sample averages" tabindex="-1"></canvas>
+        <p class="cap" id="capB"></p>
+        <div class="toggles" id="toggles" hidden>
+          <button class="tg" type="button" id="tgA" aria-pressed="false" style="--c:var(--alpha)"><i></i>Show my red zone</button>
+          <button class="tg" type="button" id="tgP" aria-pressed="false" style="--c:var(--pval)"><i></i>Show my p-value</button>
+          <button class="tg" type="button" id="tgX" aria-pressed="false" style="--c:var(--ink)"><i></i>Explore: drag to test any z-score</button>
+        </div>
+        <div class="tiles" id="tiles" aria-live="polite"></div>
+        <p class="cap" id="probeOut" hidden></p>
+      </div>
+    </div>
+    <div class="actions"><button class="btn" id="btnData" type="button"></button></div>
+  </div>
+</section>
+
+<!-- STEP 4 -->
+<section class="card" id="c4" hidden>
+  <div class="card-h"><div class="badge">4</div><div><h2>Make your decision about H<sub>0</sub></h2><div class="sub">Compare your sample to your red zone.</div></div></div>
+  <div class="body">
+    <div class="bars" id="bars"></div>
+    <div class="axisnote"><span>0%</span><span>how rare, as a share of all samples</span><span>100%</span></div>
+    <div class="q" id="q3">
+      <h3>Does your sample land inside the red zone?</h3>
+      <div class="opts two" id="o3"></div>
+      <div class="fb" id="f3" hidden></div>
+    </div>
+    <div class="q" id="q4" hidden>
+      <h3>So what do you decide about H<sub>0</sub>?</h3>
+      <div class="opts two" id="o4"></div>
+      <div class="fb" id="f4" hidden></div>
+    </div>
+  </div>
+</section>
+
+<!-- STEP 5 -->
+<section class="card" id="c5" hidden>
+  <div class="card-h"><div class="badge">5</div><div><h2>Write the conclusion in plain words</h2><div class="sub">Say what the decision means for the case.</div></div></div>
+  <div class="summary" id="sum5"></div>
+  <div class="body">
+    <div class="opts" id="o5"></div>
+    <div class="fb" id="f5" hidden></div>
+  </div>
+</section>
+
+<!-- STEP 6 -->
+<section class="card" id="c6" hidden>
+  <div class="card-h"><div class="badge">6</div><div><h2>Behind the curtain</h2><div class="sub">In real life nobody tells you the truth. In this simulation we can.</div></div></div>
+  <div class="body">
+    <p id="reality" style="max-width:70ch"></p>
+    <div class="outcome" id="outcome"></div>
+    <p class="rule" id="rule"></p>
+    <div class="actions">
+      <button class="btn" id="again" type="button">Take a new sample (same case)</button>
+      <button class="btn ghost" id="another" type="button">Try a different case</button>
+    </div>
+  </div>
+</section>
+</div>
+
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Cases ---------- */
+const CASES=[
+ {id:'battery',name:'Phone battery',dir:'left',mu0:10,sigma:1.5,n:36,truth:9.5,dec:2,unit:'hours',unitShort:'hrs',
+  q:'the average battery life',decoy:8,nWord:'phones',axis:'battery life (hours)',
+  story:'A phone company advertises that its newest phone\'s battery lasts <b>10 hours</b> on average. A tech reviewer suspects the real battery life is <mark>shorter</mark> than advertised. She tests a random sample of 36 phones.',
+  spread:'Phones vary by about 1.5 hours from one to the next.',
+  stakes:'If the reviewer wrongly calls the ad false, the company could lose customers over a battery that was fine. If she misses a real shortfall, buyers get less than they were promised.'},
+ {id:'tutor',name:'Tutoring program',dir:'right',mu0:72,sigma:10,n:25,truth:76,dec:1,unit:'points',unitShort:'pts',
+  q:'the average exam score of tutored students',decoy:75,nWord:'students',axis:'exam score (points)',
+  story:'Across the state, students average <b>72 points</b> on the Algebra 1 exam. A school started an after-school tutoring program and hopes it <mark>raises</mark> scores. It looks at a random sample of 25 tutored students.',
+  spread:'Scores vary by about 10 points from one student to the next.',
+  stakes:'If the school wrongly decides tutoring works, it may spend its budget on a program that does nothing. If it misses real gains, students lose a helpful program.'},
+ {id:'soda',name:'Soda machine',dir:'two',mu0:12,sigma:0.4,n:16,truth:12,dec:2,unit:'oz',unitShort:'oz',
+  q:'the average pour',decoy:11.5,nWord:'cups',axis:'amount poured (oz)',
+  story:'A vending machine is set to pour <b>12.0 oz</b> of soda per cup on average. The manager wants to know whether the machine has drifted <mark>in either direction</mark>, pouring too much or too little. She measures a random sample of 16 cups.',
+  spread:'Cups vary by about 0.4 oz from one pour to the next.',
+  stakes:'A false alarm means paying a technician for a machine that was fine. A miss means customers get shorted, or the company gives away soda.'},
+ {id:'pizza',name:'Pizza delivery',dir:'two',mu0:30,sigma:7,n:49,truth:32.5,dec:1,unit:'minutes',unitShort:'min',
+  q:'the average delivery time',decoy:25,nWord:'deliveries',axis:'delivery time (minutes)',
+  story:'A pizza shop promises delivery in <b>30 minutes</b> on average. Customers say it feels different lately. The owner wants to check whether the average has <mark>changed</mark>, either faster or slower. She times a random sample of 49 deliveries.',
+  spread:'Delivery times vary by about 7 minutes from one order to the next.',
+  stakes:'A false alarm could mean changing a delivery process that works. A miss means slow deliveries keep going unnoticed.'},
+ {id:'sleep',name:'Teen sleep',dir:'left',mu0:9,sigma:1.2,n:36,truth:8.7,dec:2,unit:'hours',unitShort:'hrs',
+  q:'the average nightly sleep',decoy:8,nWord:'students',axis:'sleep per night (hours)',
+  story:'Doctors recommend that teens sleep <b>9 hours</b> a night. A school counselor thinks the students at her school get <mark>less</mark> sleep than that. She surveys a random sample of 36 students.',
+  spread:'Students vary by about 1.2 hours from one to the next.',
+  stakes:'If she wrongly claims students are short on sleep, the school may change start times for no reason. If she misses a real problem, tired students stay tired.'}
+];
+const ALPHAS=[
+ {a:0.10,key:'0.1',nm:'Lenient',per:'1 in 10',pct:'10%',one:1.2816,two:1.6449,txt:'Quick to call a sample unusual.'},
+ {a:0.05,key:'0.05',nm:'Standard',per:'1 in 20',pct:'5%',one:1.6449,two:1.96,txt:'The usual middle ground.'},
+ {a:0.01,key:'0.01',nm:'Strict',per:'1 in 100',pct:'1%',one:2.3263,two:2.5758,txt:'Needs very strong evidence.'}
+];
+
+/* ---------- Math helpers (hidden from students) ---------- */
+const pdf=z=>Math.exp(-z*z/2)/Math.sqrt(2*Math.PI);
+function erf(x){const s=x<0?-1:1;x=Math.abs(x);const t=1/(1+0.3275911*x);
+  const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);return s*y}
+const Phi=z=>0.5*(1+erf(z/Math.SQRT2));
+function invPhi(p){let lo=-8,hi=8;for(let i=0;i<50;i++){const m=(lo+hi)/2;if(Phi(m)<p)lo=m;else hi=m}return (lo+hi)/2}
+function randn(){let u=0,v=0;while(!u)u=Math.random();v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const ease=t=>1-Math.pow(1-t,3);
+const zc=(al,dir)=>dir==='two'?al.two:al.one;
+function inRegion(z,z0,dir){return dir==='left'?z<=z0:dir==='right'?z>=z0:Math.abs(z)>=Math.abs(z0)}
+function inAlpha(z,c,dir){return dir==='left'?z<=-c:dir==='right'?z>=c:Math.abs(z)>=c}
+function pOf(z,dir){return dir==='left'?Phi(z):dir==='right'?1-Phi(z):2*(1-Phi(Math.abs(z)))}
+const fz=z=>(z<0?'−':'')+Math.abs(z).toFixed(1);
+const cap1=s=>s.charAt(0).toUpperCase()+s.slice(1);
+function pTxt(p){return p<0.001?'less than 0.001':p.toFixed(3)}
+function per1000(p){const k=Math.round(p*1000);return k<1?'fewer than 1 of every 1,000':'about '+k+' of every 1,000'}
+
+/* ---------- State ---------- */
+const S={};
+function resetState(i){
+  S.i=i;const sc=CASES[i];sc.se=sc.sigma/Math.sqrt(sc.n);S.sc=sc;
+  S.alpha=null;S.phase=0;S.sample=null;S.sims=null;
+  S.aStart=null;S.aT=0;S.aDone=false;S.bStart=null;S.bK=0;S.bDone=false;S.fStart=null;S.fT=0;S.landed=false;
+  S.layers={alpha:false,p:false,probe:false};S.probeZ=sc.dir==='left'?-1:1;S.truth=false;S.decision=null;
+}
+const fv=v=>v.toFixed(S.sc.dec);
+const sym={h0:()=>`μ = ${S.sc.mu0}`,ha:()=>`μ ${S.sc.dir==='left'?'<':S.sc.dir==='right'?'>':'≠'} ${S.sc.mu0}`};
+const h0Txt=()=>`${cap1(S.sc.q)} is ${S.sc.mu0} ${S.sc.unit}.`;
+const haTxt=()=>{const s=S.sc;return `${cap1(s.q)} is ${s.dir==='left'?'less than':s.dir==='right'?'greater than':'different from'} ${s.mu0} ${s.unit}.`};
+const haShort=()=>{const s=S.sc;return `${s.q} is ${s.dir==='left'?'less than':s.dir==='right'?'greater than':'different from'} ${s.mu0} ${s.unit}`};
+
+/* ---------- UI plumbing ---------- */
+function showCard(id,collapsed){const el=$(id);el.hidden=false;el.classList.toggle('collapsed',!!collapsed)}
+function goto(el){requestAnimationFrame(()=>el.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'}))}
+function setChip(id,val,on){const c=$(id);c.classList.toggle('empty',!on);c.querySelector('b').innerHTML=val}
+function choices(box,opts,fb,onOK){
+  box.innerHTML='';fb.hidden=true;let done=false;
+  opts.forEach(o=>{
+    const b=document.createElement('button');b.type='button';b.className='opt';b.innerHTML=o.html;
+    b.addEventListener('click',()=>{
+      if(done)return;fb.hidden=false;
+      if(o.ok){done=true;b.classList.add('good');[...box.children].forEach(x=>{if(x!==b)x.disabled=true});
+        fb.className='fb good';fb.innerHTML=o.fb||'Correct.';onOK&&onOK()}
+      else{b.classList.add('bad');b.disabled=true;fb.className='fb bad';fb.innerHTML=o.fb||'Not quite. Try another.'}
+    });
+    box.appendChild(b);
+  });
+}
+
+/* ---------- Step 1 ---------- */
+function buildChips(){
+  const box=$('#scChips');box.innerHTML='';
+  CASES.forEach((c,i)=>{const b=document.createElement('button');b.type='button';b.className='pick';b.textContent=c.name;
+    b.setAttribute('aria-pressed',i===S.i);b.addEventListener('click',()=>startCase(i));box.appendChild(b)});
+}
+function startCase(i){
+  resetState(i);const sc=S.sc;
+  ['#c2','#c3','#c4','#c5','#c6'].forEach(id=>{$(id).hidden=true;$(id).classList.remove('done')});
+  $('#c1').classList.remove('collapsed','done');
+  $('#panelB').hidden=true;$('#toggles').hidden=true;$('#tiles').innerHTML='';$('#probeOut').hidden=true;
+  ['tgA','tgP','tgX'].forEach(id=>$('#'+id).setAttribute('aria-pressed','false'));
+  buildChips();
+  setChip('#cfCase',sc.name,true);setChip('#cfH0','?',false);setChip('#cfHa','?',false);setChip('#cfAl','?',false);
+  $('#cfDec').hidden=true;
+  $('#story').innerHTML=sc.story;$('#story').classList.remove('hint');
+  $('#facts').innerHTML=`<span>Sample size: <b>${sc.n} ${sc.nWord}</b></span><span>${sc.spread}</span>`;
+  $('#q2').hidden=true;$('#numline').hidden=true;$('#to2').hidden=true;$('#f1').hidden=true;$('#f2').hidden=true;
+  const dir=sc.dir;
+  const o1=shuffle([
+    {html:`<span>${h0Txt()}</span><span class="sym">${sym.h0()}</span>`,ok:true,fb:`<b>Yes.</b> The null states the claim as a plain "equals". Here it is the number from the story: ${sc.mu0} ${sc.unit}.`},
+    {html:`<span>${cap1(sc.q)} is ${sc.decoy} ${sc.unit}.</span><span class="sym">μ = ${sc.decoy}</span>`,ok:false,fb:`That uses "equals", but ${sc.decoy} is not the number in the story. Check which value is being claimed.`},
+    {html:`<span>${cap1(sc.q)} is less than ${sc.mu0} ${sc.unit}.</span><span class="sym">μ &lt; ${sc.mu0}</span>`,ok:false,fb:`The null always contains "equals". A "less than" statement belongs to the alternative.`},
+    {html:`<span>${cap1(sc.q)} is different from ${sc.mu0} ${sc.unit}.</span><span class="sym">μ ≠ ${sc.mu0}</span>`,ok:false,fb:`The null always contains "equals". A "different from" statement belongs to the alternative.`}
+  ]);
+  choices($('#o1'),o1,$('#f1'),()=>{
+    setChip('#cfH0',`H<sub>0</sub>: ${sym.h0()}`,true);$('#q2').hidden=false;buildQ2();
+  });
+  $('#hintBtn').hidden=false;
+  setChip('#cfH0','?',false);
+}
+function buildQ2(){
+  const sc=S.sc,dir=sc.dir;
+  const mk=(d,txt,s)=>({html:`<span>${cap1(sc.q)} is ${txt} ${sc.mu0} ${sc.unit}.</span><span class="sym">μ ${s} ${sc.mu0}</span>`,ok:d===dir,d});
+  const opts=shuffle([mk('left','less than','<'),mk('right','greater than','>'),mk('two','different from','≠'),
+    {html:`<span>${h0Txt()}</span><span class="sym">${sym.h0()}</span>`,ok:false,d:'eq'}]);
+  const why={left:'The reviewer or researcher suspects a value <b>below</b> the claim, so the story points to one direction: lower.',
+    right:'The researcher hopes for a value <b>above</b> the claim, so the story points to one direction: higher.',
+    two:'The story asks about <b>either</b> direction, so the alternative is simply "different from".'};
+  opts.forEach(o=>{
+    if(o.ok){o.fb=`<b>Yes.</b> ${why[dir]}`;}
+    else if(o.d==='eq'){o.fb='That is the null again. The alternative must say something is different from the claim.'}
+    else{o.fb=`Check the clue word in the story. ${dir==='two'?'It asks about change in either direction, not one side.':`It points ${dir==='left'?'lower':'higher'}, not ${o.d==='two'?'to both sides':o.d==='left'?'lower':'higher'}.`}`;
+      $('#story').classList.add('hint');}
+  });
+  choices($('#o2'),opts,$('#f2'),()=>{
+    setChip('#cfHa',`H<sub>a</sub>: ${sym.ha()}`,true);
+    $('#numline').innerHTML=numlineSVG();$('#numline').hidden=false;$('#to2').hidden=false;
+  });
+}
+function numlineSVG(){
+  const sc=S.sc,d=sc.dir;
+  const arrow=(x1,x2,lab,lx,anchor)=>`<line x1="${x1}" y1="62" x2="${x2}" y2="62" stroke="var(--alpha)" stroke-width="5" stroke-linecap="round"/>
+    <path d="M${x2} 62 l${x2<x1?10:-10} -9 m${x2<x1?-10:10} 9 l${x2<x1?10:-10} 9" stroke="var(--alpha)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <text x="${lx}" y="100" text-anchor="${anchor}" fill="var(--alpha)" font-size="14" font-weight="600">${lab}</text>`;
+  return `<svg viewBox="0 0 600 120" role="img" aria-label="Number line with the claimed value in the middle and the direction of the alternative">
+    <line x1="30" y1="62" x2="570" y2="62" stroke="var(--pop)" stroke-width="2"/>
+    <circle cx="300" cy="62" r="10" fill="var(--ink)"/>
+    <text x="300" y="30" text-anchor="middle" fill="var(--ink)" font-size="15" font-weight="600">H₀ says: ${sc.mu0} ${sc.unit}</text>
+    <line x1="300" y1="36" x2="300" y2="50" stroke="var(--ink)" stroke-width="2"/>
+    ${d!=='right'?arrow(282,70,'Hₐ: lower than the claim',70,'start'):''}
+    ${d!=='left'?arrow(318,530,'Hₐ: higher than the claim',530,'end'):''}
+  </svg><p>${d==='two'?'H<sub>a</sub> looks in both directions, so the test will have two "too unusual" zones.':`H<sub>a</sub> looks one way only, so the test will have one "too unusual" zone, on the ${d==='left'?'low':'high'} side.`}</p>`;
+}
+$('#hintBtn').addEventListener('click',()=>$('#story').classList.toggle('hint'));
+$('#to2').addEventListener('click',()=>{
+  $('#c1').classList.add('done','collapsed');
+  $('#sum1').innerHTML=`<b>H<sub>0</sub>:</b> ${sym.h0()} ${S.sc.unit} &nbsp;·&nbsp; <b>H<sub>a</sub>:</b> ${sym.ha()} ${S.sc.unit}`;
+  buildStep2();showCard('#c2');goto($('#c2'));
+});
+
+/* ---------- Step 2 ---------- */
+function bellSVG(dir,al){
+  const w=240,h=100,pad=8,base=84,top=8,zr=3.4;
+  const sx=z=>pad+(z+zr)/(2*zr)*(w-2*pad),sy=z=>base-pdf(z)/0.4*(base-top);
+  const path=(a,b)=>{let d='';for(let z=a;z<=b+1e-9;z+=0.05)d+=(d?' L':'M')+sx(z).toFixed(1)+' '+sy(z).toFixed(1);return d};
+  const area=(a,b)=>path(a,b)+` L${sx(b).toFixed(1)} ${base} L${sx(a).toFixed(1)} ${base} Z`;
+  const c=zc(al,dir);let sh='';
+  const tail=(a,b,cut)=>`<path d="${area(a,b)}" fill="var(--alpha)" opacity=".9"/><rect x="${sx(a).toFixed(1)}" y="${base-5}" width="${(sx(b)-sx(a)).toFixed(1)}" height="5" fill="var(--alpha)"/><line x1="${sx(cut).toFixed(1)}" y1="${base}" x2="${sx(cut).toFixed(1)}" y2="${(sy(cut)-12).toFixed(1)}" stroke="var(--alpha)" stroke-width="2" stroke-dasharray="3 2"/>`;
+  if(dir!=='right')sh+=tail(-zr,-c,-c);
+  if(dir!=='left')sh+=tail(c,zr,c);
+  return `<svg viewBox="0 0 ${w} ${h}" aria-hidden="true">${sh}<path d="${path(-zr,zr)}" fill="none" stroke="var(--ink2)" stroke-width="2"/>
+   <line x1="${pad}" y1="${base}" x2="${w-pad}" y2="${base}" stroke="var(--ink2)" stroke-width="1.5"/>
+   <line x1="${sx(0)}" y1="${base-3}" x2="${sx(0)}" y2="${base+5}" stroke="var(--ink2)" stroke-width="1.5"/>
+   <text x="${sx(0)}" y="${h-3}" text-anchor="middle" font-size="11" fill="var(--ink2)">claimed value</text></svg>`;
+}
+function buildStep2(){
+  const sc=S.sc;
+  $('#stakes').innerHTML=`<b>Think about the stakes.</b> ${sc.stakes}`;
+  const box=$('#alphas');box.innerHTML='';
+  ALPHAS.forEach(al=>{
+    const b=document.createElement('button');b.type='button';b.className='acard';b.setAttribute('aria-pressed','false');
+    b.innerHTML=`<span class="nm">${al.nm}</span><span class="big">α = ${al.a.toFixed(2)}</span>${bellSVG(sc.dir,al)}
+      <p><b>Rare means the most extreme ${al.pct}</b> (${al.per}).${sc.dir==='two'?' Split across both ends.':''}</p>
+      <p>${al.txt} If H<sub>0</sub> is actually true, you would still raise a false alarm about ${al.per} times.</p>`;
+    b.addEventListener('click',()=>{S.alpha=al;[...box.children].forEach(x=>x.setAttribute('aria-pressed',x===b));
+      setChip('#cfAl',`α = ${al.a.toFixed(2)}`,true);$('#to3').disabled=false});
+    box.appendChild(b);
+  });
+  $('#to3').disabled=true;
+}
+$('#to3').addEventListener('click',()=>{
+  $('#c2').classList.add('done','collapsed');
+  $('#sum2').innerHTML=`<b>α = ${S.alpha.a.toFixed(2)}</b> (${S.alpha.nm.toLowerCase()}): the most extreme ${S.alpha.pct} of samples will count as "too unusual".`;
+  startStage();showCard('#c3');goto($('#c3'));
+});
+
+/* ---------- Step 3: stage ---------- */
+const cvA=$('#cvA'),cvB=$('#cvB');
+function startStage(){
+  S.phase=0;S.sample=null;S.sims=null;S.aStart=null;S.aT=0;S.aDone=false;S.bStart=null;S.bK=0;S.bDone=false;S.fStart=null;S.fT=0;S.landed=false;S.truth=false;S.ghost=null;
+  S.layers={alpha:false,p:false,probe:false};S.decision=null;
+  $('#bridge').hidden=true;$('#panelB').hidden=true;$('#toggles').hidden=true;$('#tiles').innerHTML='';$('#probeOut').hidden=true;
+  ['tgA','tgP','tgX'].forEach(id=>$('#'+id).setAttribute('aria-pressed','false'));
+  ['#c4','#c5','#c6'].forEach(id=>{$(id).hidden=true;$(id).classList.remove('done','collapsed')});
+  $('#cfDec').hidden=true;
+  setStageText();drawAll();
+}
+function setStageText(){
+  const sc=S.sc,p=S.phase;
+  $('#c3sub').textContent='The page simulates the data gathering. You read the pictures.';
+  if(p===0){
+    $('#capA').innerHTML=`This curve shows every possible ${sc.unit==='points'?'score':sc.unit==='oz'?'pour':sc.unit==='minutes'?'delivery time':sc.unit==='hours'&&sc.id==='sleep'?'night of sleep':'battery life'} if the claim (H<sub>0</sub>) is true. Most land near <b>${sc.mu0} ${sc.unit}</b>. Far-away values are rare.`;
+    $('#btnData').textContent=`Collect my sample of ${sc.n} ${sc.nWord}`;
+  }else if(p===1){
+    $('#capA').innerHTML=S.aDone?`Each dot is one of your ${sc.n} ${sc.nWord}. The amber line marks the <b>average of your sample: ${fv(S.sample.mean)} ${sc.unit}</b>. One average is not enough to judge. How unusual is it?`:`Collecting ${sc.n} ${sc.nWord}…`;
+    $('#btnData').textContent='Imagine repeating this 1,000 times';
+  }
+  if(p>=2){
+    $('#capB').innerHTML=!S.bDone?`Watch panel A: each time, a new sample of ${sc.n} ${sc.nWord} is drawn <b>from the population</b> (H<sub>0</sub> true), and its average becomes one dot here.`
+      :!S.landed?`1,000 samples were drawn from the population in A, and their averages piled up near the claimed value. Big misses are rare, because highs and lows inside a sample cancel out. This pile is the <b>sampling distribution</b>.`
+      :`Your sample's average lands at the flag. Its z-score is its position on this pile. Turn on the layers below to see what the z-score and p-value mean.`;
+  }
+}
+$('#btnData').addEventListener('click',()=>{
+  const sc=S.sc;
+  if(S.phase===0){
+    const vals=Array.from({length:sc.n},()=>sc.truth+sc.sigma*randn());
+    const mean=vals.reduce((a,b)=>a+b,0)/sc.n;
+    const bw=0.2*sc.sigma,counts={},bins=[],levels=[];
+    vals.forEach(v=>{const b=Math.round((v-sc.mu0)/bw);counts[b]=(counts[b]||0)+1;bins.push(b);levels.push(counts[b]-1)});
+    S.sample={vals,mean,bins,levels,bw,z:(mean-sc.mu0)/sc.se};
+    S.phase=1;S.aStart=performance.now();S.aT=0;S.aDone=false;
+    $('#btnData').disabled=true;setStageText();kick();
+  }else if(S.phase===1){
+    const N=1000,z=[];for(let i=0;i<N;i++)z.push(invPhi((i+0.1+0.8*Math.random())/N));shuffle(z);
+    const bw=0.1,counts={},bins=[],levels=[];
+    z.forEach(v=>{const b=Math.round(v/bw);counts[b]=(counts[b]||0)+1;bins.push(b);levels.push(counts[b]-1)});
+    S.sims={z,bins,levels,bw,peak:Math.max(...Object.values(counts))};
+    S.phase=2;S.bStart=performance.now();S.bK=0;S.bDone=false;S.ghost=null;
+    $('#bridge').innerHTML=`<h3>How each dot in B is made</h3><div class="bsteps">
+      <div class="bstep"><i>1</i><span><b>Draw a sample</b> of ${sc.n} ${sc.nWord} from the population in A (H<sub>0</sub> is true).</span></div><span class="barr" aria-hidden="true">→</span>
+      <div class="bstep"><i>2</i><span><b>Find the average</b> of that one sample.</span></div><span class="barr" aria-hidden="true">→</span>
+      <div class="bstep"><i>3</i><span><b>Drop one dot</b> in B at that average.</span></div></div>
+      <p><b>Repeat 1,000 times.</b> Every dot is a whole sample's average, not a single ${sc.nWord.replace(/s$/,'')}. Your z-score will tell you where <i>your</i> sample's average sits in this pile.</p>`;
+    $('#bridge').hidden=false;$('#panelB').hidden=false;$('#btnData').disabled=true;setStageText();drawAll();kick();
+    goto($('#bridge'));
+  }else if(S.phase===3){
+    layerOn('alpha',true);layerOn('p',true);
+    $('#bars').innerHTML='';buildStep4();showCard('#c4');goto($('#c4'));$('#btnData').disabled=true;
+  }
+});
+function onADone(){S.aDone=true;S.aT=1e9;setStageText();$('#btnData').disabled=false}
+function onBDone(){
+  S.bDone=true;S.bK=1000;S.fStart=performance.now();S.fT=0;setStageText();
+  if(RM){S.fT=1;onLanded()}
+}
+function onLanded(){
+  S.landed=true;S.phase=3;S.fT=1;setStageText();
+  $('#toggles').hidden=false;renderTiles();
+  $('#btnData').textContent='Make my decision';$('#btnData').disabled=false;
+}
+function layerOn(k,v){
+  S.layers[k]=v;
+  const id={alpha:'tgA',p:'tgP',probe:'tgX'}[k];$('#'+id).setAttribute('aria-pressed',v);
+  if(k==='probe'){cvB.tabIndex=v?0:-1;$('#probeOut').hidden=!v;updateProbe()}
+  renderTiles();drawAll();
+}
+$('#tgA').addEventListener('click',()=>layerOn('alpha',!S.layers.alpha));
+$('#tgP').addEventListener('click',()=>layerOn('p',!S.layers.p));
+$('#tgX').addEventListener('click',()=>layerOn('probe',!S.layers.probe));
+
+function stats(){
+  const sc=S.sc,zs=S.sample.z,p=pOf(zs,sc.dir),c=zc(S.alpha,sc.dir);
+  const pDots=S.sims.z.filter(z=>inRegion(z,zs,sc.dir)).length;
+  const aDots=S.sims.z.filter(z=>inAlpha(z,c,sc.dir)).length;
+  return {zs,p,c,pDots,aDots,inside:inAlpha(zs,c,sc.dir)};
+}
+function renderTiles(){
+  if(!S.landed){$('#tiles').innerHTML='';return}
+  const sc=S.sc,st=stats(),zs=st.zs;
+  const side=zs<0?'below':'above';
+  const steps=Math.abs(zs).toFixed(1);
+  let h=`<div class="tile" style="--c:var(--samp)"><div class="k">Your z-score (position in B)</div><div class="v">${fz(zs)}</div>
+   <p>${Math.abs(zs)<0.05?'Your sample average sits right on the claimed value.':`Your sample average is <b>${steps} steps ${side}</b> the claimed value. One step is ${sc.se.toFixed(sc.dec+1).replace(/0+$/,'').replace(/\.$/,'')} ${sc.unit}, the typical amount a sample average wanders.`}</p></div>`;
+  if(S.layers.alpha)h+=`<div class="tile" style="--c:var(--alpha)"><div class="k">Red zone (α = ${S.alpha.a.toFixed(2)})</div><div class="v">${st.aDots} of 1,000</div>
+   <p>The red dots are the most extreme ${S.alpha.pct} of the pile. A sample inside this zone is "too unusual" for H<sub>0</sub>.</p></div>`;
+  if(S.layers.p)h+=`<div class="tile" style="--c:var(--pval)"><div class="k">Your p-value</div><div class="v">${pTxt(st.p)}</div>
+   <p>The violet dots are samples <b>as extreme as yours or more${sc.dir==='two'?', on either end':''}</b>: ${per1000(st.p)}. The p-value is the share of the pile that is at least as unusual as your sample.</p></div>`;
+  $('#tiles').innerHTML=h;
+}
+/* explore probe */
+function probeCount(){const z0=S.probeZ,d=S.sc.dir;return S.sims.z.filter(z=>inRegion(z,z0,d)).length}
+function updateProbe(){
+  if(!S.landed||!S.layers.probe)return;
+  const n=probeCount(),z0=S.probeZ,d=S.sc.dir;
+  $('#probeOut').innerHTML=`<b>If a sample landed at z = ${fz(z0)}</b>, ${n} of the 1,000 dots would be ${d==='two'?'at least this far out on either end':'this far out or further'}. That is a p-value of about <b>${(n/1000).toFixed(3)}</b>. Drag the line to try other z-scores.`;
+}
+function probeFromEvent(e){
+  const r=cvB.getBoundingClientRect(),g=geomB(r.width);
+  S.probeZ=clamp(Math.round(((e.clientX-r.left-g.L)/g.pw*(g.hi-g.lo)+g.lo)*20)/20,-4,4);
+  updateProbe();drawB();
+}
+let dragging=false;
+cvB.addEventListener('pointerdown',e=>{if(!S.layers.probe)return;dragging=true;cvB.setPointerCapture(e.pointerId);probeFromEvent(e);e.preventDefault()});
+cvB.addEventListener('pointermove',e=>{if(dragging)probeFromEvent(e)});
+cvB.addEventListener('pointerup',()=>{dragging=false});
+cvB.addEventListener('keydown',e=>{if(!S.layers.probe)return;
+  if(e.key==='ArrowLeft'||e.key==='ArrowRight'){S.probeZ=clamp(+(S.probeZ+(e.key==='ArrowLeft'?-0.1:0.1)).toFixed(2),-4,4);updateProbe();drawB();e.preventDefault()}});
+
+/* ---------- Canvas drawing ---------- */
+const css=()=>getComputedStyle(document.documentElement);
+function colors(){const s=css(),g=n=>s.getPropertyValue(n).trim();
+  return {ink:g('--ink'),ink2:g('--ink2'),line:g('--line'),bg:g('--surface'),pop:g('--pop'),popfill:g('--popfill'),dot:g('--dot'),samp:g('--samp'),alpha:g('--alpha'),pval:g('--pval'),ok:g('--ok')}}
+function prep(cv,h){
+  const W=cv.parentElement.clientWidth-28;if(W<=0)return null;
+  const dpr=window.devicePixelRatio||1;cv.style.width=W+'px';cv.style.height=h+'px';
+  cv.width=Math.round(W*dpr);cv.height=Math.round(h*dpr);
+  const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,h);return {ctx,W,H:h};
+}
+const FONT=(w,s)=>`${w} ${s}px Inter, system-ui, sans-serif`;
+function label(ctx,txt,x,y,color,opts={}){
+  ctx.font=FONT(opts.w||600,opts.s||12.5);ctx.textAlign=opts.align||'center';ctx.textBaseline='middle';
+  if(opts.bg){const m=ctx.measureText(txt).width;const bx=opts.align==='left'?x-4:opts.align==='right'?x-m-4:x-m/2-4;
+    ctx.fillStyle=opts.bg;ctx.globalAlpha=.88;ctx.fillRect(bx,y-9,m+8,18);ctx.globalAlpha=1}
+  ctx.fillStyle=color;ctx.fillText(txt,x,y);
+}
+function labelFit(ctx,txt,x,y,color,W,opts={}){
+  ctx.font=FONT(opts.w||600,opts.s||12.5);const m=ctx.measureText(txt).width;
+  const cx=clamp(x,m/2+8,W-m/2-8);label(ctx,txt,cx,y,color,opts);
+}
+const hA=W=>clamp(Math.round(W*0.36),220,300);
+const hB=W=>clamp(Math.round(W*0.58),310,430);
+
+function drawA(){
+  if(!S.sc||$('#c3').hidden)return;
+  const sc=S.sc,W0=cvA.parentElement.clientWidth-28;const p=prep(cvA,hA(W0));if(!p)return;
+  const {ctx,W,H}=p,c=colors();
+  const L=22,R=22,xmin=sc.mu0-3.6*sc.sigma,xmax=sc.mu0+3.6*sc.sigma,pw=W-L-R;
+  const x=v=>L+(v-xmin)/(xmax-xmin)*pw,base=H-50,peakY=58;
+  // curve
+  ctx.beginPath();ctx.moveTo(L,base);
+  for(let px=0;px<=pw;px+=2){const v=xmin+px/pw*(xmax-xmin);ctx.lineTo(L+px,base-(base-peakY)*pdf((v-sc.mu0)/sc.sigma)/0.39894)}
+  ctx.lineTo(L+pw,base);ctx.closePath();ctx.fillStyle=c.popfill;ctx.fill();
+  ctx.beginPath();for(let px=0;px<=pw;px+=2){const v=xmin+px/pw*(xmax-xmin);const y=base-(base-peakY)*pdf((v-sc.mu0)/sc.sigma)/0.39894;px?ctx.lineTo(L+px,y):ctx.moveTo(L+px,y)}
+  ctx.strokeStyle=c.pop;ctx.lineWidth=2.5;ctx.stroke();
+  // axis + ticks
+  ctx.strokeStyle=c.ink2;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(L,base);ctx.lineTo(W-R,base);ctx.stroke();
+  for(let k=-3;k<=3;k++){const v=sc.mu0+k*sc.sigma,X=x(v);ctx.beginPath();ctx.moveTo(X,base);ctx.lineTo(X,base+5);ctx.stroke();label(ctx,fv(v),X,base+18,c.ink2,{w:500,s:12})}
+  label(ctx,sc.axis,W/2,base+38,c.ink2,{w:500,s:12});
+  // claimed
+  ctx.setLineDash([5,4]);ctx.strokeStyle=c.ink;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x(sc.mu0),base);ctx.lineTo(x(sc.mu0),26);ctx.stroke();ctx.setLineDash([]);
+  label(ctx,`Claimed (H₀): ${sc.mu0}`,x(sc.mu0),14,c.ink,{bg:c.bg});
+  // sample dots
+  const ghostOn=S.bStart!=null&&!S.bDone&&S.sims&&S.bK>0;
+  if(ghostOn){
+    const n=sc.n,bucket=Math.floor(S.bK/6),k=Math.min(999,S.bK-1);
+    if(!S.ghost||S.ghost.b!==bucket){
+      const raw=Array.from({length:n},()=>sc.mu0+sc.sigma*randn()),avg=raw.reduce((a,b)=>a+b,0)/n,target=sc.mu0+S.sims.z[k]*sc.se;
+      S.ghost={b:bucket,k,mean:target,vals:raw.map(v=>v+target-avg)};
+    }
+    const gh=S.ghost,bw=0.2*sc.sigma,bpx=bw/(xmax-xmin)*pw,r=Math.min(bpx/2*0.92,9),cnt={};
+    gh.vals.forEach(v=>{const b=Math.round((v-sc.mu0)/bw),l=cnt[b]||0;cnt[b]=l+1;
+      ctx.beginPath();ctx.arc(x(sc.mu0+b*bw),base-r-l*2*r*1.02,r,0,7);ctx.fillStyle=c.bg;ctx.fill();ctx.strokeStyle=c.dot;ctx.lineWidth=1.6;ctx.stroke()});
+    const X=clamp(x(gh.mean),L,W-R);ctx.strokeStyle=c.dot;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(X,base+1);ctx.lineTo(X,44);ctx.stroke();
+    ctx.fillStyle=c.dot;ctx.beginPath();ctx.moveTo(X,base+1);ctx.lineTo(X-7,base+11);ctx.lineTo(X+7,base+11);ctx.closePath();ctx.fill();
+    labelFit(ctx,`Sample #${S.bK}: its average becomes one dot in B`,X,32,c.dot,W,{bg:c.bg});
+  }
+  if(S.sample&&!ghostOn){
+    const sm=S.sample,bpx=sm.bw/(xmax-xmin)*pw,r=Math.min(bpx/2*0.92,9),n=sm.vals.length,stagger=RM?0:clamp(1500/n,18,70);
+    for(let i=0;i<n;i++){
+      const tt=RM?1:clamp((S.aT-i*stagger)/450,0,1);if(tt<=0)continue;
+      const cx=x(sc.mu0+sm.bins[i]*sm.bw),cy=base-r-sm.levels[i]*2*r*1.02-(1-ease(tt))*140;
+      ctx.beginPath();ctx.arc(cx,cy,r,0,7);ctx.fillStyle=c.samp;ctx.globalAlpha=tt<1?tt:1;ctx.fill();
+      ctx.globalAlpha=1;ctx.strokeStyle=c.bg;ctx.lineWidth=1;ctx.stroke();
+    }
+    if(S.aDone){
+      const X=clamp(x(sm.mean),L,W-R);ctx.strokeStyle=c.samp;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(X,base+1);ctx.lineTo(X,38);ctx.stroke();
+      ctx.fillStyle=c.samp;ctx.beginPath();ctx.moveTo(X,base+1);ctx.lineTo(X-7,base+11);ctx.lineTo(X+7,base+11);ctx.closePath();ctx.fill();
+      labelFit(ctx,`Sample average: ${fv(sm.mean)}`,X,32,c.samp,W,{bg:c.bg});
+    }
+  }
+  if(S.truth){
+    const X=x(sc.truth);ctx.strokeStyle=c.ok;ctx.lineWidth=2.5;ctx.setLineDash([2,4]);ctx.beginPath();ctx.moveTo(X,base);ctx.lineTo(X,62);ctx.stroke();ctx.setLineDash([]);
+    const same=Math.abs(sc.truth-sc.mu0)<1e-9;
+    labelFit(ctx,same?'Real average = the claim':`Real average: ${fv(sc.truth)}`,X,same?48:50,c.ok,W,{bg:c.bg});
+  }
+}
+function geomB(Wc){const L=20,R=20;return {L,R,pw:Wc-L-R,lo:-4.3,hi:4.3}}
+function drawB(){
+  if(!S.sc||!S.sims||$('#panelB').hidden)return;
+  const sc=S.sc,W0=cvB.parentElement.clientWidth-28;const p=prep(cvB,hB(W0));if(!p)return;
+  const {ctx,W,H}=p,c=colors(),g=geomB(W),zx=z=>g.L+(z-g.lo)/(g.hi-g.lo)*g.pw;
+  const yb=H-98,topPad=58,sm=S.sims,bpx=sm.bw/(g.hi-g.lo)*g.pw;
+  const step=Math.min(bpx,(yb-topPad)/(sm.peak+1)),r=Math.max(1.4,Math.min(bpx,step*1.2)/2-0.25);
+  const dir=sc.dir,al=S.alpha,cz=zc(al,dir),zs=S.sample.z;
+  const L1=S.layers.alpha,L2=S.layers.p&&S.landed;
+  // faint zone shading behind dots
+  const shade=(a,b,col,op)=>{ctx.globalAlpha=op;ctx.fillStyle=col;ctx.fillRect(zx(a),topPad-18,zx(b)-zx(a),yb-topPad+18);ctx.globalAlpha=1};
+  if(L1&&S.landed){if(dir!=='right')shade(g.lo,-cz,c.alpha,.10);if(dir!=='left')shade(cz,g.hi,c.alpha,.10)}
+  // gridlines at integer z
+  ctx.strokeStyle=c.line;ctx.lineWidth=1;for(let k=-4;k<=4;k++){ctx.beginPath();ctx.moveTo(zx(k),topPad-18);ctx.lineTo(zx(k),yb);ctx.stroke()}
+  // dots
+  const k=S.bK;
+  for(let i=0;i<k;i++){
+    const z=sm.z[i],cx=zx(sm.bins[i]*sm.bw),cy=yb-r-sm.levels[i]*step-1;
+    let fill=c.dot,ring=null;
+    if(S.landed){
+      const a=L1&&inAlpha(z,cz,dir),pp=L2&&inRegion(z,zs,dir);
+      if(pp){fill=c.pval;if(a)ring=c.alpha}else if(a)fill=c.alpha;
+      if(S.layers.probe&&inRegion(z,S.probeZ,dir))ring=c.ink;
+    }
+    ctx.beginPath();ctx.arc(cx,cy,r,0,7);ctx.fillStyle=fill;ctx.fill();
+    if(ring){ctx.strokeStyle=ring;ctx.lineWidth=1.4;ctx.stroke()}
+  }
+  // axis
+  ctx.strokeStyle=c.ink2;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(g.L,yb);ctx.lineTo(W-g.R,yb);ctx.stroke();
+  for(let kk=-4;kk<=4;kk++){const X=zx(kk);ctx.beginPath();ctx.moveTo(X,yb);ctx.lineTo(X,yb+(kk%1===0?6:3));ctx.stroke();
+    if(kk>=-3&&kk<=3||W>520){label(ctx,kk===0?'0':fz(kk).replace('.0',''),X,yb+34,c.ink,{w:600,s:12.5})}
+    if((kk>=-3&&kk<=3)&&(W>520||kk%2===0))label(ctx,fv(sc.mu0+kk*sc.se),X,yb+52,c.ink2,{w:500,s:11.5})}
+  label(ctx,'z-score (steps from the claimed value)',W/2,yb+72,c.ink2,{w:500,s:12});
+  label(ctx,`${sc.axis.replace(/\s*\(.*\)/,'')} in ${sc.unit}`,W/2,yb+88,c.ink2,{w:500,s:11.5});
+  // zone strips under axis
+  const strip=(a,b,col,off)=>{ctx.fillStyle=col;ctx.fillRect(zx(a),yb+1+off,zx(b)-zx(a),5)};
+  if(L1&&S.landed){if(dir!=='right')strip(g.lo,-cz,c.alpha,0);if(dir!=='left')strip(cz,g.hi,c.alpha,0)}
+  if(L2){const a=Math.abs(zs);
+    if(dir==='left')strip(g.lo,zs,c.pval,6);else if(dir==='right')strip(zs,g.hi,c.pval,6);else{strip(g.lo,-a,c.pval,6);strip(a,g.hi,c.pval,6)}}
+  // zone labels
+  if(S.landed){
+    const st=stats();
+    if(L1){const tx=(a,b)=>zx((a+b)/2);
+      const txt=dir==='two'?`${(S.alpha.a*50).toFixed(1).replace('.0','')}% each end`:`${S.alpha.pct} red zone`;
+      if(dir!=='right')labelFit(ctx,txt,tx(g.lo,-cz)+ (dir==='two'?0:0),yb-36,c.alpha,W);
+      if(dir!=='left')labelFit(ctx,txt,tx(cz,g.hi),yb-36,c.alpha,W)}
+    if(L2){const side=dir==='left'?zs<0?-1:1:dir==='right'?1:Math.sign(zs||1);
+      const edge=dir==='left'?(g.lo+zs)/2:dir==='right'?(zs+g.hi)/2:(side<0?(g.lo-Math.abs(zs))/2:(Math.abs(zs)+g.hi)/2);
+      const cxp=clamp(zx(edge),W*0.12,W*0.88);
+      labelFit(ctx,`p-value: ${st.pDots} of 1,000 dots`,cxp,yb-62+(L1?0:26),c.pval,W,{bg:c.bg});
+      if(dir==='two'){const mx=-side*Math.abs(zs);ctx.setLineDash([3,3]);ctx.strokeStyle=c.pval;ctx.globalAlpha=.55;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(zx(mx),yb);ctx.lineTo(zx(mx),topPad-10);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+        labelFit(ctx,'mirror image',zx(mx),topPad-20,c.pval,W,{w:500,s:11.5})}}
+  }
+  // truth
+  if(S.truth){const tz=(sc.truth-sc.mu0)/sc.se,X=zx(clamp(tz,g.lo,g.hi));
+    ctx.strokeStyle=c.ok;ctx.lineWidth=2.5;ctx.setLineDash([2,4]);ctx.beginPath();ctx.moveTo(X,yb);ctx.lineTo(X,topPad-8);ctx.stroke();ctx.setLineDash([]);
+    labelFit(ctx,Math.abs(tz)<1e-9?'Real averages center here (= the claim)':'Real sample averages center here',X,topPad-26,c.ok,W,{bg:c.bg})}
+  // probe
+  if(S.layers.probe&&S.landed){const X=zx(S.probeZ);ctx.strokeStyle=c.ink;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(X,yb+8);ctx.lineTo(X,topPad-6);ctx.stroke();
+    ctx.fillStyle=c.ink;ctx.beginPath();ctx.arc(X,topPad-6,8,0,7);ctx.fill();ctx.fillStyle=c.bg;ctx.font=FONT(700,10);ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('⇄',X,topPad-6);
+    labelFit(ctx,`z = ${fz(S.probeZ)}`,X,topPad-24,c.ink,W,{bg:c.bg})}
+  // flag
+  if(S.fStart!=null){
+    const t=ease(S.fT),zz=clamp(zs,-4.2,4.2),X=zx(zz),yT=-30+(topPad-14+30)*t;
+    ctx.strokeStyle=c.samp;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(X,yT);ctx.lineTo(X,yb);ctx.stroke();
+    const txt=`My sample: z = ${fz(zs)}`;
+    ctx.font=FONT(700,12.5);const m=ctx.measureText(txt).width+16,bx=clamp(X-m/2,2,W-m-2);
+    ctx.fillStyle=c.samp;ctx.beginPath();ctx.roundRect?ctx.roundRect(bx,yT-24,m,22,6):ctx.rect(bx,yT-24,m,22);ctx.fill();
+    ctx.fillStyle='#1b1300';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(txt,bx+m/2,yT-13);
+    ctx.fillStyle=c.samp;ctx.beginPath();ctx.moveTo(X-6,yb-1);ctx.lineTo(X+6,yb-1);ctx.lineTo(X,yb-11);ctx.closePath();ctx.fill();
+  }
+  cvB.setAttribute('aria-label',S.landed?`Sampling distribution of 1,000 sample averages. Your sample is at z = ${fz(zs)}.`:'Sampling distribution being built from 1,000 simulated sample averages.');
+}
+function drawAll(){drawA();drawB()}
+
+/* animation loop */
+let raf=0;
+function kick(){if(!raf)raf=requestAnimationFrame(loop)}
+function loop(now){
+  raf=0;let active=false;
+  if(S.aStart!=null&&!S.aDone){
+    S.aT=RM?1e9:now-S.aStart;const n=S.sample.vals.length,stagger=clamp(1500/n,18,70);
+    if(RM||S.aT>(n-1)*stagger+500)onADone();else active=true;
+  }
+  if(S.bStart!=null&&!S.bDone){
+    const dur=RM?1:3400,t=clamp((now-S.bStart)/dur,0,1);S.bK=Math.floor(1000*Math.pow(t,1.7));
+    if(t>=1)onBDone();else active=true;
+  }
+  if(S.fStart!=null&&!S.landed){
+    S.fT=clamp((now-S.fStart)/900,0,1);if(S.fT>=1)onLanded();else active=true;
+  }
+  drawAll();if(active)kick();
+}
+let rsz;addEventListener('resize',()=>{clearTimeout(rsz);rsz=setTimeout(drawAll,60)});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>setTimeout(drawAll,30));
+new MutationObserver(()=>setTimeout(drawAll,30)).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* ---------- Step 4: decide ---------- */
+function barRow(lab,val,col,max){
+  const w=Math.max(0.4,val/max*100);const inside=w>55;
+  return `<div class="barrow"><div class="lab" style="color:${col}">${lab}</div><div class="track" style="--c:${col};--w:${w}%"><div class="fill" style="width:${w}%"></div><span class="${inside?'in':''}">${val<0.001?'<0.001':val.toFixed(3)}</span></div></div>`;
+}
+function buildStep4(){
+  const sc=S.sc,st=stats();
+  $('#bars').innerHTML=barRow('Red zone (α)',S.alpha.a,'var(--alpha)',1)+barRow('Your p-value',st.p,'var(--pval)',1);
+  const inside=st.inside;
+  choices($('#o3'),[
+    {html:'<span>Yes, inside the red zone</span>',ok:inside,fb:inside?`<b>Yes.</b> The flag is at z = ${fz(st.zs)}, and the violet bar is shorter than the red bar. Fewer dots are this extreme than your alpha allows.`:`Look again. The flag is at z = ${fz(st.zs)}, which is <b>not</b> out in the red zone. Many dots are as extreme as your sample or more.`},
+    {html:'<span>No, outside the red zone</span>',ok:!inside,fb:!inside?`<b>Right.</b> The flag is at z = ${fz(st.zs)}. Plenty of dots, ${per1000(st.p)}, are as extreme as your sample or more, so it is not rare enough.`:`Look again. The flag at z = ${fz(st.zs)} is out in the red zone. Compare the bars: the p-value is smaller than alpha.`}
+  ],$('#f3'),()=>{$('#q4').hidden=false;buildQ4(st)});
+  $('#q4').hidden=true;
+}
+function buildQ4(st){
+  const rej=st.inside;
+  choices($('#o4'),[
+    {html:'<span>Reject H<sub>0</sub><small>The sample is too unusual for H<sub>0</sub> to be believable.</small></span>',ok:rej,
+      fb:rej?`<b>Correct.</b> Your sample is in the "too unusual" zone: the p-value (${pTxt(st.p)}) is smaller than alpha (${S.alpha.a.toFixed(2)}). If H<sub>0</sub> were true, a sample this extreme would be a rare event.`:`Not quite. Your sample is <b>outside</b> the red zone: the p-value is larger than alpha. A sample like this is not rare enough to throw out H<sub>0</sub>.`},
+    {html:'<span>Fail to reject H<sub>0</sub><small>The sample is not unusual enough to doubt H<sub>0</sub>.</small></span>',ok:!rej,
+      fb:!rej?`<b>Correct.</b> Your sample is outside the "too unusual" zone: the p-value (${pTxt(st.p)}) is larger than alpha (${S.alpha.a.toFixed(2)}). A sample like this happens fairly often when H<sub>0</sub> is true. We say "fail to reject" instead of "accept", because not finding evidence is different from proving H<sub>0</sub> true.`:`Not quite. Your sample is <b>inside</b> the red zone: the p-value is smaller than alpha. That is rare enough if H<sub>0</sub> were true to doubt it.`}
+  ],$('#f4'),()=>{
+    S.decision=rej?'reject':'fail';
+    setChip('#cfDec',rej?'Reject H<sub>0</sub>':'Fail to reject H<sub>0</sub>',true);$('#cfDec').hidden=false;
+    buildStep5();showCard('#c5');goto($('#c5'));
+  });
+}
+
+/* ---------- Step 5 ---------- */
+function buildStep5(){
+  const rej=S.decision==='reject';
+  const evid=`There is enough evidence to conclude that ${haShort()}.`,none=`There is not enough evidence to conclude that ${haShort()}.`;
+  const opts=rej?[
+    {html:`<span>${evid}</span>`,ok:true,fb:'<b>Yes.</b> Rejecting H<sub>0</sub> means the data support the alternative. We still say "evidence", not "proof", because a rare sample can happen by chance.'},
+    {html:`<span>${none}</span>`,ok:false,fb:'That says the opposite of your decision. You rejected H<sub>0</sub>, so the data do support the alternative.'},
+    {html:`<span>We have proven for certain that ${haShort()}.</span>`,ok:false,fb:'Too strong. A test gives evidence, never certainty. A rare sample can still happen by chance when H<sub>0</sub> is true.'}
+  ]:[
+    {html:`<span>${none}</span>`,ok:true,fb:'<b>Yes.</b> Failing to reject means the data did not give convincing evidence for the alternative. It does not prove H<sub>0</sub>.'},
+    {html:`<span>${evid}</span>`,ok:false,fb:'That says the opposite of your decision. You failed to reject H<sub>0</sub>, so the evidence was not convincing.'},
+    {html:`<span>We have proven that H<sub>0</sub> is true: ${S.sc.q} is exactly ${S.sc.mu0} ${S.sc.unit}.</span>`,ok:false,fb:'Too strong. Failing to reject is not the same as accepting. A sample can look ordinary even when the claim is a little off.'}
+  ];
+  choices($('#o5'),shuffle(opts),$('#f5'),()=>{
+    $('#c5').classList.add('done','collapsed');
+    $('#sum5').innerHTML=`${rej?evid:none}`;
+    buildStep6();showCard('#c6');goto($('#c6'));
+  });
+}
+
+/* ---------- Step 6 ---------- */
+function buildStep6(){
+  const sc=S.sc,rej=S.decision==='reject',h0true=Math.abs(sc.truth-sc.mu0)<1e-9;
+  S.truth=true;drawAll();
+  $('#reality').innerHTML=h0true?`In this simulation, <b>H<sub>0</sub> was true</b>: ${sc.q} really is ${sc.mu0} ${sc.unit}. Look at the green dotted lines on the charts above.`
+    :`In this simulation, <b>H<sub>0</sub> was false</b>: ${sc.q} is really ${fv(sc.truth)} ${sc.unit}, not ${sc.mu0}. Look at the green dotted lines on the charts above. Real sample averages pile up there, not at the claim.`;
+  let col,h,t;
+  if(h0true&&!rej){col='var(--ok)';h='Correct: no false alarm';t='H<sub>0</sub> was true and you kept it. Nothing special is happening, and your test agreed.'}
+  else if(h0true&&rej){col='var(--bad)';h='Type I error: a false alarm';t=`H<sub>0</sub> was true, but your sample landed in the "too unusual" zone by luck and you rejected it. This is exactly the risk you chose with alpha: about ${S.alpha.per} of the time, a true H<sub>0</sub> gets rejected.`}
+  else if(!h0true&&rej){col='var(--ok)';h='Correct: you caught a real difference';t='H<sub>0</sub> was false and your sample was convincing enough to show it.'}
+  else{col='var(--bad)';h='Type II error: a miss';t='H<sub>0</sub> was false, but this sample was not convincing enough to show it. Bigger samples make real differences easier to spot.'}
+  $('#outcome').style.setProperty('--c',col);$('#outcome').innerHTML=`<h3>${h}</h3><p>${t}</p>`;
+  $('#rule').innerHTML='Try "Take a new sample". Different samples from the same situation give different pictures, and sometimes a different decision. That is why a decision comes with a built-in chance of being wrong.';
+}
+$('#again').addEventListener('click',()=>{
+  startStage();$('#c3').scrollIntoView({behavior:RM?'auto':'smooth',block:'start'});
+});
+$('#another').addEventListener('click',()=>{
+  startCase((S.i+1)%CASES.length);$('#c1').scrollIntoView({behavior:RM?'auto':'smooth',block:'start'});
+});
+
+/* ---------- init ---------- */
+startCase(0);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>drawAll());
+})();
+</script>
+</body>
+</html>
